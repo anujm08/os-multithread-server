@@ -12,8 +12,10 @@
 
 using namespace std;
 
-int BUFFER_SIZE = 1024;
-queue<int> requests;
+static int BUFFER_SIZE = 1024;
+static int NUM_THREADS;
+static int MAX_QUEUE;
+static queue<int> requests;
 
 pthread_mutex_t lock;
 pthread_cond_t queueHasSpace;
@@ -31,7 +33,7 @@ void serveFile(int sock)
     bzero(buffer, BUFFER_SIZE); 
     
     /* Read file requesst from client */
-    int bytes_read = read(sock, buffer, sizeof(buffer));
+    int bytes_read = read(sock, buffer, BUFFER_SIZE);
     if (bytes_read < 0)
     {
         perror("ERROR reading from socket");
@@ -55,7 +57,7 @@ void serveFile(int sock)
     // TODO check error handling, program should not terminate on error in reading/writing
     while(1)
     {
-        int bytes_read = fread(buffer, sizeof(char), sizeof(buffer), fp);
+        int bytes_read = fread(buffer, sizeof(char), BUFFER_SIZE, fp);
         if(bytes_read > 0)
         {
             int bytes_sent = send(sock, buffer, bytes_read, 0);
@@ -68,7 +70,7 @@ void serveFile(int sock)
         }
         if(bytes_read == 0)
         {
-            printf("File %s successfully sent to client\n",filename);
+            printf("File %s successfully sent to client\n", filename);
             break;
         }
         if(bytes_read < 0)
@@ -95,10 +97,9 @@ void* serverThread(void* arg)
         sock = requests.front();
         requests.pop();
         pthread_cond_signal(&queueHasSpace);
-        pthread_mutex_unlock(&lock);
-        
+
+        pthread_mutex_unlock(&lock);        
         serveFile(sock);
-        
         close(sock);
     }
 }
@@ -107,7 +108,6 @@ int main(int argc, char *argv[])
 {
     int sockfd, newsockfd, portno, yes = 1;
     socklen_t clilen;
-    int numthreads, maxmqueuesize;
     char buffer[BUFFER_SIZE];
     struct sockaddr_in serv_addr, cli_addr;
 
@@ -117,8 +117,8 @@ int main(int argc, char *argv[])
     }
 
     portno = atoi(argv[1]);
-    numthreads = atoi(argv[2]);
-    maxmqueuesize = atoi(argv[3]);
+    NUM_THREADS = atoi(argv[2]);
+    MAX_QUEUE = atoi(argv[3]);
 
     //initialize lock
     if (pthread_mutex_init(&lock, NULL) != 0)
@@ -141,8 +141,8 @@ int main(int argc, char *argv[])
 
 
     // create threads
-    pthread_t* tid = (pthread_t*) malloc(numthreads*sizeof(pthread_t));
-    for(int i = 0; i < numthreads; i++)
+    pthread_t* tid = (pthread_t*) malloc(NUM_THREADS * sizeof(pthread_t));
+    for (int i = 0; i < NUM_THREADS; i++)
         pthread_create(&tid[i], NULL, &serverThread, NULL);
 
     /* create socket */
@@ -153,14 +153,13 @@ int main(int argc, char *argv[])
 
     /* fill in port number to listen on. IP address can be anything (INADDR_ANY) */
 
-    bzero((char*)&serv_addr, sizeof(serv_addr));
+    bzero((char*) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(portno);
 
     /* bind socket to this port number on this machine */
-
-    if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) 
+    if (bind(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0) 
         error("ERROR on binding");
     
     /* listen for incoming connection requests */
@@ -170,8 +169,10 @@ int main(int argc, char *argv[])
 	while (1)
     {
         pthread_mutex_lock(&lock);
-        while(maxmqueuesize != 0 && requests.size() >= maxmqueuesize)
+
+        while(MAX_QUEUE != 0 && requests.size() >= MAX_QUEUE)
             pthread_cond_wait(&queueHasSpace, &lock);
+        
         pthread_mutex_unlock(&lock);
         
         /* accept a new request, create a newsockfd */
@@ -185,14 +186,15 @@ int main(int argc, char *argv[])
         printf("New client connected\n");
 
         pthread_mutex_lock(&lock);
-        requests.push(newsockfd);
 
+        requests.push(newsockfd);
         pthread_cond_signal(&queueHasRequests);
+        
         pthread_mutex_unlock(&lock);
 	}
 
     // join the threads
-    for(int i = 0; i < numthreads; i++)
+    for(int i = 0; i < NUM_THREADS; i++)
         pthread_join(tid[i], NULL);
 
     pthread_mutex_destroy(&lock);
