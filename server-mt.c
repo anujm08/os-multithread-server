@@ -106,7 +106,7 @@ void* serverThread(void* arg)
 
 int main(int argc, char *argv[])
 {
-    int sockfd, newsockfd, portno, yes = 1;
+    int i, sockfd, newsockfd, portno, yes = 1;
     socklen_t clilen;
     char buffer[BUFFER_SIZE];
     struct sockaddr_in serv_addr, cli_addr;
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 
     // create threads
     pthread_t* tid = (pthread_t*) malloc(NUM_THREADS * sizeof(pthread_t));
-    for (int i = 0; i < NUM_THREADS; i++)
+    for (i = 0; i < NUM_THREADS; i++)
         pthread_create(&tid[i], NULL, &serverThread, NULL);
 
     /* create socket */
@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
 	}
 
     // join the threads
-    for(int i = 0; i < NUM_THREADS; i++)
+    for(i = 0; i < NUM_THREADS; i++)
         pthread_join(tid[i], NULL);
 
     pthread_mutex_destroy(&lock);
