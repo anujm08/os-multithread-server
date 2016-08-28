@@ -127,6 +127,7 @@ void getFile(int index)
 
 int main(int argc, char *argv[])
 {
+    int i;
     if (argc != 7) {
        fprintf(stderr, "usage :  %s [host] [port] [num-threads] [run time] [sleep time] [mode]\n", argv[0]);
        exit(0);
@@ -154,12 +155,12 @@ int main(int argc, char *argv[])
     pthread_t *tid = malloc(NUM_THREADS * sizeof(pthread_t));
 
     // create NUM_THREADS threads
-    for(int i = 0; i < NUM_THREADS; i++) 
+    for(i = 0; i < NUM_THREADS; i++) 
         // second NULL is for giving arguments to getFile
         pthread_create(&tid[i], NULL, getFile, i);
 
     // wait for all NUM_THREADS threads to finish
-    for(int i = 0; i < NUM_THREADS; i++) 
+    for(i = 0; i < NUM_THREADS; i++) 
         //change NULL for getting back return values
         pthread_join(tid[i], NULL);
 
@@ -172,7 +173,7 @@ int main(int argc, char *argv[])
     int total_requests = 0;
     double sum_response_time = 0.0;
 
-    for(int i = 0; i < NUM_THREADS; i++)
+    for(i = 0; i < NUM_THREADS; i++)
     {
         total_requests += requests[i];
         sum_response_time += response_times[i];
