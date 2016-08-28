@@ -34,7 +34,7 @@ void serveFile(int sock)
     
     /* Read file requesst from client */
     int bytes_read = read(sock, buffer, BUFFER_SIZE);
-    if (bytes_read < 0)
+    if (bytes_read <= 0)
     {
         perror("ERROR reading from socket");
         return;
@@ -52,25 +52,23 @@ void serveFile(int sock)
     }
     
     /* Send requested file */
-    printf("Sending file %s to client\n", filename);
+    //printf("Sending file %s to client\n", filename);
 
-    // TODO check error handling, program should not terminate on error in reading/writing
     while(1)
     {
         int bytes_read = fread(buffer, sizeof(char), BUFFER_SIZE, fp);
         if(bytes_read > 0)
         {
             int bytes_sent = send(sock, buffer, bytes_read, 0);
-            if (bytes_sent < bytes_read) 
+            if (bytes_sent < 0) 
             {
-                printf("Sockfd writing error on %d\n", sock);
                 perror("ERROR writing to socket");
                 break;
             }
         }
         if(bytes_read == 0)
         {
-            printf("File %s successfully sent to client\n", filename);
+            //printf("File %s successfully sent to client\n", filename);
             break;
         }
         if(bytes_read < 0)
@@ -163,7 +161,7 @@ int main(int argc, char *argv[])
         error("ERROR on binding");
     
     /* listen for incoming connection requests */
-    listen(sockfd, 2);
+    listen(sockfd, 1000);
     clilen = sizeof(cli_addr);
 
 	while (1)
@@ -183,7 +181,7 @@ int main(int argc, char *argv[])
             perror("ERROR on accept");
             continue;
         }
-        printf("New client connected\n");
+        //printf("New client connected\n");
 
         pthread_mutex_lock(&lock);
 
